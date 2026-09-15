@@ -1,0 +1,33 @@
+{
+  "name": "mnist-autoencoder",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev --continue",
+    "lint": "turbo run lint",
+    "lint:fix": "oxlint --fix .",
+    "sync:weights": "bun scripts/sync-weights.ts",
+    "build:mnist-samples": "bun scripts/build-mnist-samples.ts",
+    "fmt": "oxfmt .",
+    "fmt:check": "oxfmt --check .",
+    "start:testing": "bun run --filter @mnist-autoencoder/training test:mnist",
+    "start:training": "bun packages/training/src/training.ts",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/node": "^22.20.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "oxfmt": "^0.67.0",
+    "oxlint": "^1.79.0",
+    "turbo": "^2.6.3",
+    "typescript": "^7"
+  },
+  "packageManager": "bun@1.4.2"
+}

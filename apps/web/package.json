@@ -1,0 +1,29 @@
+{
+  "name": "@mnist-autoencoder/web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite",
+    "preview": "vite preview",
+    "lint": "oxlint src",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@mnist-autoencoder/neural-network": "workspace:*",
+    "@tanstack/react-query": "^5.102.8",
+    "cn": "^0.2.6",
+    "lucide-react": "^1.44.0",
+    "motion": "^13.2.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@vitejs/plugin-react": "latest",
+    "tailwindcss": "^4.3.3",
+    "vite": "latest",
+    "vitest": "latest"
+  }
+}
