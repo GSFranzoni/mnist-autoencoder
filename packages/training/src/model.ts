@@ -1,7 +1,10 @@
+import { access, mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { getMnistAutoencoderNetwork } from "@mnist-autoencoder/neural-network";
+import { compileAutoencoder, createAutoencoder, hasLatentLayer } from "./autoencoder";
+
+type Tensorflow = typeof import("@tensorflow/tfjs-node");
 
 export const REPOSITORY_ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 
@@ -9,16 +12,27 @@ export const MNIST_DATASET_DIR = resolve(REPOSITORY_ROOT, "datasets/mnist");
 
 export const ARTIFACTS_DIR = resolve(REPOSITORY_ROOT, "artifacts");
 
-export const WEIGHTS_PATH = resolve(ARTIFACTS_DIR, "weights.json");
+export const MODEL_DIR = resolve(ARTIFACTS_DIR, "tfjs");
 
-export async function createNetwork() {
-  const { network } = getMnistAutoencoderNetwork();
+export const MODEL_PATH = resolve(MODEL_DIR, "model.json");
 
-  const weightsFile = Bun.file(WEIGHTS_PATH);
-
-  if (await weightsFile.exists()) {
-    network.load(await weightsFile.json());
+export async function loadAutoencoder(tf: Tensorflow) {
+  try {
+    await access(MODEL_PATH);
+  } catch {
+    return createAutoencoder(tf);
   }
 
-  return network;
+  const model = await tf.loadLayersModel(`file://${MODEL_PATH}`);
+  if (!hasLatentLayer(model)) {
+    model.dispose();
+    return createAutoencoder(tf);
+  }
+
+  return compileAutoencoder(tf, model);
+}
+
+export async function saveAutoencoder(model: import("@tensorflow/tfjs-node").LayersModel) {
+  await mkdir(MODEL_DIR, { recursive: true });
+  await model.save(`file://${MODEL_DIR}`);
 }

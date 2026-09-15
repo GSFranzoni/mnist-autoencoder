@@ -40,7 +40,7 @@ export class TrainingPresenter {
         [
           `epoch ${this.epoch}`,
           `${metrics.samples.toLocaleString("en-US")} samples`,
-          `reconstruction MSE ${formatMetric(metrics.loss)}`,
+          `reconstruction BCE ${formatMetric(metrics.loss)}`,
         ].join(" · "),
       );
       return;
@@ -53,9 +53,7 @@ export class TrainingPresenter {
     this.testMetrics = metrics;
 
     if (!this.interactive) {
-      console.log(
-        `test set · reconstruction MSE ${formatMetric(metrics.loss)}\n`,
-      );
+      console.log(`test set · reconstruction BCE ${formatMetric(metrics.loss)}\n`);
       return;
     }
 
@@ -90,9 +88,7 @@ export class TrainingPresenter {
       return;
     }
 
-    const testSummary = this.testMetrics
-      ? `MSE ${formatMetric(this.testMetrics.loss)}`
-      : "—";
+    const testSummary = this.testMetrics ? `BCE ${formatMetric(this.testMetrics.loss)}` : "—";
 
     const lines = [
       color("95", "MNIST  /  AUTOENCODER"),
@@ -110,7 +106,7 @@ export class TrainingPresenter {
         "37",
         boxLine(metricLine("SAMPLES PROCESSED", this.metrics.samples.toLocaleString("en-US"))),
       ),
-      color("93", boxLine(metricLine("RECONSTRUCTION MSE", formatMetric(this.metrics.loss)))),
+      color("93", boxLine(metricLine("RECONSTRUCTION BCE", formatMetric(this.metrics.loss)))),
       color("95", boxLine(metricLine("TEST RECONSTRUCTION", testSummary))),
       color("95", "╰──────────────────────────────────────────────────────╯"),
       "",

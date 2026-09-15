@@ -12,11 +12,15 @@ export function App() {
   }
 
   if (network.isError || !network.data) {
+    const message =
+      network.error instanceof Error ? network.error.message : "Model data is unavailable.";
+
     return (
       <main className="bg-background text-foreground grid min-h-dvh place-items-center px-5 text-center">
-        <p className="text-xl font-semibold">
-          the tiny brain could not wake up — reload to try again ✎
-        </p>
+        <div>
+          <p className="text-xl font-semibold">the tiny brain could not wake up ✎</p>
+          <p className="text-muted mt-2 max-w-md font-mono text-xs">{message}</p>
+        </div>
       </main>
     );
   }

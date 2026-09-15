@@ -1,32 +1,38 @@
 import { resolve } from "node:path";
 
-import { MSELoss, NeuralNetwork, ReconstructionAudit } from "@mnist-autoencoder/neural-network";
+import type { LayersModel, Tensor } from "@tensorflow/tfjs-node";
+import * as tf from "@tensorflow/tfjs-node";
 
-import { streamMNIST } from "./mnist";
-import { createNetwork, MNIST_DATASET_DIR } from "./model";
+import { ReconstructionAudit } from "./audit";
+import { mnistBatches } from "./mnist";
+import { MNIST_DATASET_DIR, loadAutoencoder } from "./model";
 
-const testPath = resolve(MNIST_DATASET_DIR, "test.csv");
+const TEST_PATH = resolve(MNIST_DATASET_DIR, "test.csv");
 
-export async function test(network: NeuralNetwork) {
+export async function evaluateAutoencoder(model: LayersModel) {
   const audit = new ReconstructionAudit();
 
-  const lossFunction = new MSELoss();
+  const batches = mnistBatches(tf, TEST_PATH);
+  const iterator = await batches.iterator();
 
-  for await (const sample of streamMNIST(testPath)) {
-    const reconstruction = network.forward(sample.input);
+  for (let next = await iterator.next(); !next.done; next = await iterator.next()) {
+    const inputs = next.value as tf.Tensor2D;
 
-    const { loss } = lossFunction.calculate(reconstruction, sample.input);
-
-    audit.record(loss);
+    try {
+      const result = model.evaluate(inputs, inputs);
+      const losses = (Array.isArray(result) ? result : [result]) as Tensor[];
+      audit.record(losses[0]!.dataSync()[0]!, inputs.shape[0]);
+      losses.forEach((loss) => loss.dispose());
+    } finally {
+      inputs.dispose();
+    }
   }
 
-  const metrics = audit.snapshot();
-
-  return {
-    metrics,
-  };
+  return audit.snapshot();
 }
 
-if (import.meta.main) {
-  await test(await createNetwork());
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const model = await loadAutoencoder(tf);
+  console.log(await evaluateAutoencoder(model));
+  model.dispose();
 }

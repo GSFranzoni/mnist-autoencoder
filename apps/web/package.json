@@ -11,8 +11,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@mnist-autoencoder/neural-network": "workspace:*",
     "@tanstack/react-query": "^5.102.8",
+    "@tensorflow/tfjs": "4.22.0",
     "cn": "^0.2.6",
     "lucide-react": "^1.44.0",
     "motion": "^13.2.0",

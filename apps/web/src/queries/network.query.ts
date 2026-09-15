@@ -1,5 +1,5 @@
-import { getMnistAutoencoderNetwork } from "@mnist-autoencoder/neural-network";
 import { queryOptions } from "@tanstack/react-query";
+import type { LayersModel, SymbolicTensor, Tensor } from "@tensorflow/tfjs";
 
 export type ExplorerModel = {
   decode: (latent: [number, number]) => number[];
@@ -8,59 +8,66 @@ export type ExplorerModel = {
 };
 
 export type MnistSample = {
-  sampleId: number;
+  x: number;
+  y: number;
   label: number;
-  pixels: string;
 };
 
 async function loadNetwork(): Promise<ExplorerModel> {
   const basePath = import.meta.env.BASE_URL;
-
-  const [weightsResponse, samplesResponse] = await Promise.all([
-    fetch(`${basePath}artifacts/weights.json`),
-    fetch(`${basePath}artifacts/mnist-samples.json`),
-  ]);
-
-  if (!weightsResponse.ok || !samplesResponse.ok) {
-    throw new Error("Could not load the trained autoencoder artifacts");
+  const [tf, samples] = await Promise.all([import("@tensorflow/tfjs"), loadSamples(basePath)]);
+  const model = await tf.loadLayersModel(`${basePath}artifacts/tfjs/model.json`);
+  let latentLayer: LayersModel["layers"][number];
+  try {
+    latentLayer = model.getLayer("latent");
+  } catch {
+    throw new Error("The published model does not contain the required latent layer.");
   }
-
-  const { decodeLayers, encodeLayers, network } = getMnistAutoencoderNetwork();
-
-  if (!network.load(await weightsResponse.json())) {
-    throw new Error("The published weights do not match the autoencoder topology");
+  const encoder = tf.model({ inputs: model.inputs, outputs: latentLayer.output });
+  const decoderInput = tf.input({ shape: [2], name: "latent_input" });
+  let decoderValue = decoderInput as SymbolicTensor;
+  const latentIndex = model.layers.indexOf(latentLayer);
+  for (const layer of model.layers.slice(latentIndex + 1)) {
+    decoderValue = layer.apply(decoderValue) as SymbolicTensor;
   }
+  const decoder = tf.model({ inputs: decoderInput, outputs: decoderValue });
 
   return {
-    decode: (latent) => {
-      let output: number[] = latent;
-
-      for (const layer of decodeLayers) {
-        output = layer.forward(output);
-      }
-
-      return output;
-    },
+    decode: (latent) => predict(tf, decoder, latent, 2),
     encode: (pixels) => {
-      let output = pixels;
-
-      for (const layer of encodeLayers) {
-        output = layer.forward(output);
-      }
-
-      return [output[0]!, output[1]!];
+      const latent = predict(tf, encoder, pixels, 784);
+      return [latent[0]!, latent[1]!];
     },
-    samples: (await samplesResponse.json()) as MnistSample[],
+    samples,
   };
+}
+
+async function loadSamples(basePath: string): Promise<MnistSample[]> {
+  const response = await fetch(`${basePath}artifacts/mnist-samples.json`);
+
+  if (!response.ok) {
+    throw new Error("Could not load the MNIST explorer samples");
+  }
+
+  return response.json() as Promise<MnistSample[]>;
+}
+
+function predict(
+  tf: typeof import("@tensorflow/tfjs"),
+  model: LayersModel,
+  values: number[],
+  inputSize: number,
+) {
+  return tf.tidy(() => {
+    const input = tf.tensor2d([values], [1, inputSize]);
+    const output = model.predict(input) as Tensor;
+    return Array.from(output.dataSync()) as number[];
+  });
 }
 
 export const networkQueryOptions = queryOptions({
   queryKey: ["network"],
-  queryFn: () =>
-    loadNetwork().catch((e) => {
-      console.log(e);
-      throw e;
-    }),
+  queryFn: loadNetwork,
   staleTime: Infinity,
   gcTime: Infinity,
   retry: 1,

@@ -3,13 +3,15 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "lint": "oxlint src",
-    "test:mnist": "bun run src/testing.ts",
-    "train": "bun run src/training.ts",
+    "lint": "oxlint src scripts",
+    "test:mnist": "npm exec --yes --package=node@20.20.2 -- node ./node_modules/.bin/tsx src/testing.ts",
+    "train": "npm exec --yes --package=node@20.20.2 -- node ./node_modules/.bin/tsx src/training.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@mnist-autoencoder/neural-network": "workspace:*",
-    "csv-parse": "^7.0.2"
+    "@tensorflow/tfjs-node": "4.22.0"
+  },
+  "devDependencies": {
+    "tsx": "4.23.13"
   }
 }

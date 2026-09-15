@@ -1,56 +1,26 @@
-import { createReadStream } from "node:fs";
+import { pathToFileURL } from "node:url";
 
-import { parse } from "csv-parse";
+import type * as tfjs from "@tensorflow/tfjs-node";
 
-type MNISTSample = {
-  input: number[];
-  label: number;
-};
+import { INPUT_SIZE } from "./autoencoder";
 
-export async function* streamMNIST(path: string): AsyncGenerator<MNISTSample> {
-  const parser = createReadStream(path).pipe(
-    parse({
-      cast: true,
-    }),
-  );
+type Tensorflow = typeof import("@tensorflow/tfjs-node");
 
-  for await (const row of parser) {
-    const [label, ...pixels] = row as number[];
+const PIXEL_COLUMNS = Array.from({ length: INPUT_SIZE }, (_, index) => `pixel_${index}`);
 
-    yield {
-      label,
-      input: pixels.map((pixel) => pixel / 255),
-    };
-  }
-}
+const COLUMN_NAMES = ["label", ...PIXEL_COLUMNS];
 
-/**
- * Streams MNIST in a randomized order without loading the whole 105 MB CSV into memory.
- * A sample is swapped into a fixed-size buffer and a random buffered sample is emitted.
- */
-export async function* shuffledMNIST(
+export function mnistBatches(
+  tf: Tensorflow,
   path: string,
-  bufferSize = 2_048,
-): AsyncGenerator<MNISTSample> {
-  const buffer: MNISTSample[] = [];
+  { batchSize = 100, shuffle = false } = {},
+): tfjs.data.Dataset<tfjs.TensorContainer> {
+  const samples = tf.data
+    .csv(pathToFileURL(path).href, {
+      columnNames: COLUMN_NAMES,
+      hasHeader: false,
+    })
+    .map((row) => PIXEL_COLUMNS.map((column) => (row as Record<string, number>)[column]! / 255));
 
-  for await (const sample of streamMNIST(path)) {
-    if (buffer.length < bufferSize) {
-      buffer.push(sample);
-      continue;
-    }
-
-    const index = Math.floor(Math.random() * buffer.length);
-    const bufferedSample = buffer[index]!;
-
-    buffer[index] = sample;
-    yield bufferedSample;
-  }
-
-  for (let index = buffer.length - 1; index > 0; index--) {
-    const swapIndex = Math.floor(Math.random() * (index + 1));
-    [buffer[index], buffer[swapIndex]] = [buffer[swapIndex]!, buffer[index]!];
-  }
-
-  yield* buffer;
+  return (shuffle ? samples.shuffle(2_048) : samples).batch(batchSize);
 }
