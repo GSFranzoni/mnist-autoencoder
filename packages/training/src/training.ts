@@ -13,7 +13,9 @@ const TRAINING_PATH = `${MNIST_DATASET_DIR}/train.csv`;
 
 export async function train(epochs = 10) {
   const model = await loadAutoencoder(tf);
+
   const presenter = await TrainingPresenter.create();
+
   let stopped = false;
 
   const stop = () => {
