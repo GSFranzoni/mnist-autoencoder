@@ -24,6 +24,7 @@ export async function loadAutoencoder(tf: Tensorflow) {
   }
 
   const model = await tf.loadLayersModel(`file://${MODEL_PATH}`);
+
   if (!hasLatentLayer(model)) {
     model.dispose();
     return createAutoencoder(tf);
